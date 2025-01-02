@@ -4056,9 +4056,9 @@ void submap::load( JsonIn &jsin, const std::string &member_name, int version,
             }
             // Load the id of the current partial construction
             if( jsin.test_int() ) {
-                pc->ter_or_furn_indx = jsin.get_int();
+                pc->ter_or_furn_idx = jsin.get_int();
             } else {
-                pc->ter_or_furn_indx = 0;
+                pc->ter_or_furn_idx = 0;
             }
             jsin.start_array();
             while( !jsin.end_array() ) {
