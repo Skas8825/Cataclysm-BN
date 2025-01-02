@@ -3811,6 +3811,7 @@ void submap::store( JsonOut &jsout ) const
         jsout.write( elem.first.z );
         jsout.write( elem.second->counter );
         jsout.write( elem.second->id.id() );
+        jsout.write( elem.second->ter_or_furn_idx );
         jsout.start_array();
         for( auto &it : elem.second->components ) {
             jsout.write( it );
@@ -4052,6 +4053,12 @@ void submap::load( JsonIn &jsin, const std::string &member_name, int version,
                 pc->id = construction_id( jsin.get_int() );
             } else {
                 pc->id = construction_str_id( jsin.get_string() ).id();
+            }
+            // Load the id of the current partial construction
+            if( jsin.test_int() ) {
+                pc->ter_or_furn_indx = jsin.get_int();
+            } else {
+                pc->ter_or_furn_indx = 0;
             }
             jsin.start_array();
             while( !jsin.end_array() ) {
