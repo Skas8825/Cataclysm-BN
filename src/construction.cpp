@@ -1070,6 +1070,7 @@ void place_construction( const construction_group_str_id &group )
     // create the partial construction struct
     std::unique_ptr<partial_con> pc = std::make_unique<partial_con>( here.getabs( pnt ) );
     pc->id = con.id;
+    pc->ter_or_furn_idx = selected_terrain_or_furniture;
     pc->counter = 0;
     // Set the trap that has the examine function
     // Special handling for constructions that take place on existing traps.
@@ -1669,7 +1670,6 @@ void construction::load( const JsonObject &jo, const std::string &/*src*/ )
 
     optional( jo, was_loaded, "pre_terrain", pre_terrain );
     optional( jo, was_loaded, "pre_furniture", pre_furniture );
-    optional( jo, was_loaded, "post_terrain", post_terrain );
     if( jo.has_member( "post_terrain" ) ) {
         if( jo.has_array( "post_terrain" ) ) {
             for( std::string ter : jo.get_array( "post_terrain" ) ) {
@@ -1679,6 +1679,7 @@ void construction::load( const JsonObject &jo, const std::string &/*src*/ )
             post_terrain.emplace_back( ter_str_id( jo.get_string( "post_terrain" ) ) );
         };
     };
+    optional( jo, was_loaded, "post_furniture", post_furniture );
     assign( jo, "pre_flags", pre_flags );
     optional( jo, was_loaded, "post_flags", post_flags );
 
@@ -1790,7 +1791,7 @@ void construction::check() const
         report.warn( "Defines unknown pre_furniture '%s'", pre_furniture );
     }
     if( !post_terrain.empty() && !is_post_terrain_valid() ) {
-        report.warn( "Defines unknown post_terrain '%s'", post_terrain );
+        report.warn( "Defines unknown post_terrain '%s'", post_terrain.front() );
     }
     if( !post_furniture.is_empty() && !post_furniture.is_valid() ) {
         report.warn( "Defines unknown post_furniture '%s'", post_furniture );
