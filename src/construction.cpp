@@ -157,7 +157,7 @@ static const deferred_color color_data = def_c_cyan; //color for data parts
 
 // These templates should only be used for post_terrain/post_furniture
 template <typename T>
-concept ter_or_furn = std::is_same_v<T, ter_str_id>;
+concept ter_or_furn = std::is_same_v<T, ter_str_id> || std::is_same_v<T, furn_str_id>;
 // Returns a string listing all elements or names of the vector containing the post terrain/furniture
 template <ter_or_furn T> std::string list_ters_or_furns( const std::vector<T> &list,
         bool get_name = true )
@@ -180,7 +180,7 @@ template <ter_or_furn T> std::string list_ters_or_furns( const std::vector<T> &l
 }
 
 // Query the desire post terrain/furniture
-template < typename T > int query_post( const std::vector<T> &list )
+template < ter_or_furn T > int query_post( const std::vector<T> &list )
 {
     if( list.size() > 1 ) {
         // Menu
@@ -188,8 +188,8 @@ template < typename T > int query_post( const std::vector<T> &list )
         for( auto &ter_or_furn : list ) {
             uilist_entry entry( ter_or_furn.obj().name() );
             entry.extratxt.left = 1;
-            entry.extratxt.sym = special_symbol( ter_or_furn().symbol() );
-            entry.extratxt.color = ter_or_furn().color();
+            entry.extratxt.sym = special_symbol( ter_or_furn.obj().symbol() );
+            entry.extratxt.color = ter_or_furn.obj().color();
             ui_entries.push_back( entry );
         };
         uilist smenu;
@@ -199,6 +199,7 @@ template < typename T > int query_post( const std::vector<T> &list )
         ui_manager::redraw();
         return smenu.ret;
     } else {
+        // If there's only one element
         return 0;
     }
 }
@@ -258,7 +259,7 @@ void check_consistency()
         }
         std::for_each( c.post_terrain.begin(), c.post_terrain.end(), [&]( ter_str_id & ter ) {
             if( ter.str().starts_with( "f_" ) ) {
-                c.post_furniture = furn_str_id( ter.str() ); // Should be added to the vector instead (eventaully)
+                c.post_furniture.emplace_back( furn_str_id( ter.str() ) );
                 ter = ter_str_id();
                 did_migrate = true;
             };
@@ -552,7 +553,7 @@ std::optional<construction_id> construction_menu( const bool blueprint )
                 bool pre_is_ter_or_furn = !current_con->pre_terrain.is_empty() ||
                                           !current_con->pre_furniture.is_empty();
                 bool post_is_ter_or_furn = !current_con->post_terrain.empty() ||
-                                           !current_con->post_furniture.is_empty();
+                                           !current_con->post_furniture.empty();
 
                 // Display final product name only if more than one step or more than one output.
                 // Assume single stage constructions should be clear
@@ -564,16 +565,22 @@ std::optional<construction_id> construction_menu( const bool blueprint )
                         result_name = list_ters_or_furns( current_con->post_terrain );
                         result_descr = current_con->post_terrain.front().obj().description.translated();
                     } else {
-                        result_name = current_con->post_furniture.obj().name();
-                        result_descr = current_con->post_furniture.obj().description.translated();
+                        result_name = list_ters_or_furns( current_con->post_furniture );
+                        result_descr = current_con->post_furniture.front().obj().description.translated();
                     }
 
-                    // Replace prev description if the construction has one
+                    // Replace prev description if the construction has one, if not it uses the first terrain
+                    // or furniture description
                     if( !current_con->description.empty() ) {
                         result_descr = colorize( current_con->description, color_data );
                     };
 
-                    if( options.size() > 1 || current_con->post_terrain.size() != 1 ) {
+                    // Displays terrain/furniture name if it's a multi
+                    // step recipe or has multiple possible outputs.
+                    // Single step and product recipes should be clear
+                    // in their title what their result is.
+                    if( options.size() > 1 ||  current_con->post_terrain.size() > 1 ||
+                        ( current_con->post_furniture.size() > 1 ) ) {
                         std::string current_line = string_format( _( "Stage/Variants #%d: " ), stage_counter );
                         current_line += colorize( result_name, color_title );
                         add_line( current_line );
@@ -1054,8 +1061,11 @@ bool can_construct( const construction &con, const tripoint &p )
             return here.ter( p ) != ter;
         } );
     }
-    if( !con.post_furniture.is_empty() ) {
-        place_okay &= here.furn( p ) != con.post_furniture;
+    if( !con.post_furniture.empty() ) {
+        place_okay &= std::any_of( con.post_furniture.begin(),
+        con.post_furniture.end(), [&here, &p]( const furn_str_id & furn ) {
+            return here.furn( p ) != furn;
+        } );
     }
     return place_okay;
 }
@@ -1233,8 +1243,8 @@ void complete_construction( Character &ch )
             here.ter_set( above, new_ter->roof );
         }
     }
-    if( !built.post_furniture.is_empty() ) {
-        here.furn_set( terp, built.post_furniture );
+    if( !built.post_furniture.empty() ) {
+        here.furn_set( terp, built.post_furniture[ter_or_furn_idx] );
         active_tile_data *active = active_tiles::furn_at<active_tile_data>(
                                        tripoint_abs_ms( here.getabs( terp ) ) );
         if( active != nullptr ) {
@@ -1724,6 +1734,7 @@ void construction::load( const JsonObject &jo, const std::string &/*src*/ )
     optional( jo, was_loaded, "pre_note", pre_note );
     optional( jo, was_loaded, "pre_terrain", pre_terrain );
     optional( jo, was_loaded, "pre_furniture", pre_furniture );
+    // Will check if post_terrain is an array or a single string to see how it needs to be loaded
     if( jo.has_member( "post_terrain" ) ) {
         if( jo.has_array( "post_terrain" ) ) {
             for( std::string ter : jo.get_array( "post_terrain" ) ) {
@@ -1733,7 +1744,16 @@ void construction::load( const JsonObject &jo, const std::string &/*src*/ )
             post_terrain.emplace_back( ter_str_id( jo.get_string( "post_terrain" ) ) );
         };
     };
-    optional( jo, was_loaded, "post_furniture", post_furniture );
+    // Will check if post_furniture is an array or a single string to see how it needs to be loaded
+    if( jo.has_member( "post_furniture" ) ) {
+        if( jo.has_array( "post_furniture" ) ) {
+            for( std::string furn : jo.get_array( "post_furniture" ) ) {
+                post_furniture.emplace_back( furn_str_id( furn ) );
+            }
+        } else {
+            post_furniture.emplace_back( furn_str_id( jo.get_string( "post_furniture" ) ) );
+        };
+    };
     assign( jo, "pre_flags", pre_flags );
     optional( jo, was_loaded, "post_flags", post_flags );
 
@@ -1834,7 +1854,7 @@ void construction::check() const
     if( !pre_terrain.is_empty() && !pre_furniture.is_empty() ) {
         report.warn( "Defines both pre_terrain and pre_furniture" );
     }
-    if( !post_terrain.empty() && !post_furniture.is_empty() ) {
+    if( !post_terrain.empty() && !post_furniture.empty() ) {
         report.warn( "Defines both post_terrain and post_furniture" );
     }
 
@@ -1848,8 +1868,9 @@ void construction::check() const
         report.warn( "Defines unknown post_terrain in one of these: '%s'",
                      list_ters_or_furns( post_terrain, false ) );
     }
-    if( !post_furniture.is_empty() && !post_furniture.is_valid() ) {
-        report.warn( "Defines unknown post_furniture '%s'", post_furniture );
+    if( !post_furniture.empty() && !is_post_furniture_valid() ) {
+        report.warn( "Defines unknown post_furniture in one of these: '%s'",
+                     list_ters_or_furns( post_furniture, false ) );
     }
 
     if( !report.is_empty() ) {
@@ -1930,19 +1951,26 @@ bool construction::is_post_terrain_valid() const
     } );
 }
 
+// Check if all furnitures are valid id's
+bool construction::is_post_furniture_valid() const
+{
+    return std::all_of( post_furniture.begin(),
+    post_furniture.end(), []( const furn_str_id & furn ) {
+        return furn.is_valid();
+    } );
+}
+
+// Returns the selected index for the terrain/furniture to be used, defaults to 0 if theres only one in the vector.
 int construction::query_post_terrain_or_furniture() const
 {
     int ret = -1;
 
-    if( !post_terrain.empty() && is_post_terrain_valid() ) {
-        ret = query_post( post_terrain );
+    if( !post_terrain.empty() && is_post_terrain_valid() || !post_furniture.empty() &&
+        is_post_furniture_valid() ) {
+        ret = !post_terrain.empty() ? query_post( post_terrain ) : query_post( post_furniture );
     };
-    if( !post_furniture.is_empty() && post_furniture.is_valid() ) {
-        ret = 0;
-    }
 
     return ret;
-
 }
 
 int construction::adjusted_time() const

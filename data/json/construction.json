@@ -1934,7 +1934,7 @@
     "qualities": [ [ { "id": "HAMMER", "level": 2 } ] ],
     "components": [ [ [ "2x4", 4 ] ], [ [ "nail", 8 ] ] ],
     "pre_special": "check_empty",
-    "post_furniture": "f_chair"
+    "post_furniture": ["f_chair","f_armchair"]
   },
   {
     "type": "construction",

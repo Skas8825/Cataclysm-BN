@@ -1066,11 +1066,11 @@ static std::vector<construction_id> get_group_roots( const std::vector<construct
     std::copy_if( group_members.begin(), group_members.end(),
     std::back_inserter( ret ), [&]( auto & con ) {
         auto it = std::find_if( group_members.begin(), group_members.end(), [&]( auto & next ) {
-            // Checks if one of the avaible post terrains works as a pre-terrain?
-            return ( std::any_of( con->post_terrain.begin(),
-            con->post_terrain.end(), [&next]( ter_str_id ter ) {
-                return ter == next->pre_terrain;
-            } ) ) &&( con->post_furniture == next->pre_furniture );
+            // Checks if one of the avaible terrains or furnitures serves as a prerequisite for others
+            return ( std::find( con->post_terrain.begin(), con->post_terrain.end(),
+                                next->pre_terrain ) != con->post_terrain.end() )
+                   || ( std::find( con->post_furniture.begin(), con->post_furniture.end(),
+                                   next->pre_furniture ) != con->post_furniture.end() );
         } );
         return it == group_members.end();
     } );
@@ -1093,26 +1093,22 @@ static activity_reason_info find_base_construction(
     const furn_id furn = here.furn( loc );
     const ter_id ter = here.ter( loc );
 
-    // Get roots:
-    std::vector<construction_id> roots = get_group_roots( list_constructions, id );
-    // Check if any roots are completed, if so we're done here
-    for( const auto &rid : roots ) {
-        const construction &rid_build = rid.obj();
-        if(
-            ( !rid_build.post_terrain.empty() && rid_build.post_terrain.front().id() == ter ) ||
-            ( !rid_build.post_furniture.is_empty() && rid_build.post_furniture.id() == furn )
-        ) {
-            return activity_reason_info::build( do_activity_reason::ALREADY_DONE, false, rid, ter_or_furn_idx );
-        }
+    // Checks if the build is already in the tile
+    if( !id.obj().post_terrain.empty() ? id.obj().post_terrain[ter_or_furn_idx] == ter :
+        id.obj().post_furniture[ter_or_furn_idx] == furn ) {
+        return activity_reason_info::build( do_activity_reason::ALREADY_DONE, false, id, ter_or_furn_idx );
     }
-    // None of the roots are complete, so let's evaluate everything!
+
+    // Not done already, so let's evaluate everything!
     std::map<ter_str_id, std::vector<construction_id>> post_ter;
     std::map<furn_str_id, std::vector<construction_id>> post_furn;
     for( const auto &con : list_constructions ) {
         if( con->group.is_empty() ) {
             continue;
         }
-        ( post_furn[con->post_furniture] ).push_back( con );
+        for( furn_str_id furn : con->post_furniture ) {
+            ( post_furn[furn] ).push_back( con );
+        };
         for( ter_str_id ter : con->post_terrain ) {
             ( post_ter[ter] ).push_back( con );
         };
@@ -1128,6 +1124,8 @@ static activity_reason_info find_base_construction(
             return time > b.time;
         }
     };
+    // Get roots:
+    std::vector<construction_id> roots = get_group_roots( list_constructions, id );
     std::priority_queue<time_con> pq;
     std::for_each( roots.begin(), roots.end(), [&]( const auto & con ) {
         // Needs to check if the root actually have the valid terrain/furniture somewhere
@@ -1174,11 +1172,9 @@ static activity_reason_info find_base_construction(
 
         const auto &con_build = con.obj();
         const int  con_ter_or_furn_idx = cur.valid_ter_or_furn_idx ;
-        //popup( std::to_string( con_ter_or_furn_idx ) ); // Testing purposes
-        if(
-            ( !con_build.post_terrain.empty() && con_build.post_terrain[con_ter_or_furn_idx].id() == ter ) ||
-            ( !con_build.post_furniture.is_empty() && con_build.post_furniture.id() == furn )
-        ) {
+        if( ( !con_build.post_terrain.empty() ? con_build.post_terrain[con_ter_or_furn_idx] ==
+              ter : con_build.post_furniture[con_ter_or_furn_idx] == furn )
+          ) {
             return activity_reason_info::build( do_activity_reason::ALREADY_DONE, false, con,
                                                 con_ter_or_furn_idx );
         }

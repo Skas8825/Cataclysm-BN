@@ -59,7 +59,7 @@ struct construction {
 
         // Final object's after construction
         std::vector<ter_str_id> post_terrain;
-        furn_str_id post_furniture;
+        std::vector<furn_str_id> post_furniture;
 
         // Item group of byproducts created by the construction on success.
         item_group_id byproduct_item_group;
@@ -101,6 +101,9 @@ struct construction {
 
         // Checks if all terrains are valid
         bool is_post_terrain_valid() const;
+
+        // Checks if all furnitures are valid
+        bool is_post_furniture_valid() const;
 
         // If true, the requirements are generated during finalization
         bool vehicle_start = false;
