@@ -1124,9 +1124,10 @@ void place_construction( const construction_group_str_id &group )
     }
     std::vector<detached_ptr<item>> used;
     const construction &con = *valid.find( pnt )->second;
+
     // Select the output for the construction
     int selected_terrain_or_furniture = con.query_post_terrain_or_furniture();
-    // If nothing was selected return
+    // If nothing was selected return // need to make special case for deconstruct
     if( selected_terrain_or_furniture < 0 ) {
         return;
     };
@@ -1251,7 +1252,6 @@ void complete_construction( Character &ch )
             active->set_last_updated( calendar::turn );
         }
     }
-
     // Spawn byproducts
     if( built.byproduct_item_group ) {
         std::vector<detached_ptr<item>> items_list = item_group::items_from( built.byproduct_item_group,

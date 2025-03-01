@@ -1128,12 +1128,18 @@ static activity_reason_info find_base_construction(
     std::vector<construction_id> roots = get_group_roots( list_constructions, id );
     std::priority_queue<time_con> pq;
     std::for_each( roots.begin(), roots.end(), [&]( const auto & con ) {
-        // Needs to check if the root actually have the valid terrain/furniture somewhere
+        // Find where is the construction in the root (or tries if it hasn't)
         auto ter = std::find( con->post_terrain.begin(), con->post_terrain.end(),
                               id->post_terrain[ter_or_furn_idx] );
         if( ter != con->post_terrain.end() ) {
             int con_ter_or_furn_idx = std::distance( con->post_terrain.begin(), ter );
             pq.push( { to_turns<int>( con->time ), con, con_ter_or_furn_idx} );
+        };
+        auto furn = std::find( con->post_furniture.begin(), con->post_furniture.end(),
+                               id->post_furniture[ter_or_furn_idx] );
+        if( furn != con->post_furniture.end() ) {
+            int con_ter_or_furn_idx = std::distance( con->post_furniture.begin(), furn );
+            pq.push( { to_turns<int>( con->time ), con, con_ter_or_furn_idx } );
         };
     } );
     auto is_disassembly = []( const auto & con ) -> bool {

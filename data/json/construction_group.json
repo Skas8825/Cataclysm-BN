@@ -963,12 +963,7 @@
     "type": "construction_group",
     "id": "install_freezer",
     "name": "Install Freezer"
-  },
-  {
-    "type": "construction_group",
-    "id": "install_glass_freezer",
-    "name": "Install Glass Freezer"
-  },
+  },  
   {
     "type": "construction_group",
     "id": "install_minifridge",

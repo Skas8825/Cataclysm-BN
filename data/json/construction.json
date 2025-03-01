@@ -24,6 +24,7 @@
     "post_flags": [ "keep_items" ],
     "dark_craftable": true,
     "post_special": "done_deconstruct"
+
   },
   {
     "type": "construction",
@@ -4714,29 +4715,16 @@
   },
   {
     "type": "construction",
-    "id": "constr_gridfreezer",
+    "id": "constr_grid_freezer",
     "group": "install_freezer",
     "category": "WORKSHOP",
     "required_skills": [  ],
     "time": "10 m",
     "qualities": [  ],
-    "components": [ [ [ "freezer", 1 ] ] ],
+    "components": [ [ [ "glass_freezer", 1 ], [ "freezer", 1 ] ] ],
     "pre_note": "Will only work if constructed in/on a building that has an electric grid with a mounted battery.",
     "pre_special": "check_empty",
-    "post_furniture": "f_freezer"
-  },
-  {
-    "type": "construction",
-    "id": "constr_gridglass_freezer",
-    "group": "install_glass_freezer",
-    "category": "WORKSHOP",
-    "required_skills": [  ],
-    "time": "10 m",
-    "qualities": [  ],
-    "components": [ [ [ "glass_freezer", 1 ] ] ],
-    "pre_note": "Will only work if constructed in/on a building that has an electric grid with a mounted battery.",
-    "pre_special": "check_empty",
-    "post_furniture": "f_glass_freezer"
+    "post_furniture": ["f_freezer","f_glass_freezer"]
   },
   {
     "type": "construction",

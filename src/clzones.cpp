@@ -236,9 +236,14 @@ blueprint_options::query_con_result blueprint_options::query_con()
     };
 
     const construction_group_str_id &chosen_group = chosen.group;
-    const std::string &chosen_mark = !chosen.post_terrain.empty() ?
-                                     chosen.post_terrain[selected_terrain_or_furniture].str() :
-                                     chosen.post_furniture[selected_terrain_or_furniture].str();
+    std::string chosen_mark;
+    // Individual checks since it could be empty if we are deconstructing
+    if( !chosen.post_terrain.empty() ) {
+        chosen_mark = chosen.post_terrain[selected_terrain_or_furniture].str();
+    };
+    if( !chosen.post_furniture.empty() ) {
+        chosen_mark = chosen.post_furniture[selected_terrain_or_furniture].str();
+    };
 
     if( *con_index != index || chosen_group != group || chosen_mark != mark ||
         selected_terrain_or_furniture != ter_or_furn_idx ) {
